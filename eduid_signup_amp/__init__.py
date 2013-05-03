@@ -1,31 +1,18 @@
-import logging
-
-import bson
-
-
-logger = logging.getLogger(__name__)
+from eduid_am.exceptions import UserDoesNotExist
 
 
 def attribute_fetcher(db, user_id):
     attributes = {}
-    try:
-        _id = bson.ObjectId(user_id)
-    except bson.errors.InvalidId:
-        logger.error('Invalid user_id: %s' % user_id)
-        return attributes
-    
-    user = db.registered.find_one({'_id': _id})
+
+    user = db.registered.find_one({'_id': user_id})
     if user is None:
-        logger.warning('The user %s does not exist in the "registered" collection'
-                       % user_id)
+        raise UserDoesNotExist(user_id)
 
     else:
+        # white list of valid attributes for security reasons
         for attr in ('email', 'date', 'verified'):
             value = user.get(attr, None)
             if value is not None:
                 attributes[attr] = value
-
-        logger.debug('Attributes fetched for user %s: %s'
-                     % (user_id, attributes))
 
     return attributes

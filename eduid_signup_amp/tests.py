@@ -1,8 +1,10 @@
 import datetime
 import unittest
 
+import bson
 import pymongo
 
+from eduid_am.exceptions import UserDoesNotExist
 from eduid_signup_amp import attribute_fetcher
 
 
@@ -18,17 +20,9 @@ class AttributeFetcherTests(unittest.TestCase):
     def tearDown(self):
         self.db.drop_collection('registered')
 
-    def test_invalid_user_id(self):
-        self.assertEqual(
-            attribute_fetcher(self.db, '123'),
-            {}
-        )
-
     def test_invalid_user(self):
-        self.assertEqual(
-            attribute_fetcher(self.db, '000000000000000000000000'),
-            {}
-        )
+        self.assertRaises(UserDoesNotExist, attribute_fetcher, self.db,
+                          bson.ObjectId('000000000000000000000000'))
 
     def test_existing_user(self):
         user_id = self.db.registered.insert({
@@ -37,7 +31,7 @@ class AttributeFetcherTests(unittest.TestCase):
             'verified': True,
         })
         self.assertEqual(
-            attribute_fetcher(self.db, str(user_id)),
+            attribute_fetcher(self.db, user_id),
             {'email': 'john@example.com',
             'date': datetime.datetime(2013, 4, 1, 10, 10, 20, 0),
             'verified': True}
@@ -52,7 +46,7 @@ class AttributeFetcherTests(unittest.TestCase):
         })
         # Malicious attributes are not returned
         self.assertEqual(
-            attribute_fetcher(self.db, str(user_id)),
+            attribute_fetcher(self.db, user_id),
             {'email': 'john@example.com',
             'date': datetime.datetime(2013, 4, 1, 10, 10, 20, 0),
             'verified': True}
