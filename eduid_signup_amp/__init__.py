@@ -6,7 +6,7 @@ def attribute_fetcher(db, user_id):
 
     user = db.registered.find_one({'_id': user_id})
     if user is None:
-        raise UserDoesNotExist(user_id)
+        raise UserDoesNotExist("No user matching _id='%s'" % user_id)
 
     else:
         # white list of valid attributes for security reasons
