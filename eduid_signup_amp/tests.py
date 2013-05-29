@@ -1,44 +1,36 @@
 import datetime
-import unittest
 
 import bson
-import pymongo
 
 from eduid_am.exceptions import UserDoesNotExist
+from eduid_am.tests import MongoTestCase
 from eduid_signup_amp import attribute_fetcher
 
 
 TEST_DB_NAME = 'eduid_signup_test'
 
 
-class AttributeFetcherTests(unittest.TestCase):
-
-    def setUp(self):
-        self.connection = pymongo.Connection()
-        self.db = self.connection[TEST_DB_NAME]
-
-    def tearDown(self):
-        self.db.drop_collection('registered')
+class AttributeFetcherTests(MongoTestCase):
 
     def test_invalid_user(self):
-        self.assertRaises(UserDoesNotExist, attribute_fetcher, self.db,
+        self.assertRaises(UserDoesNotExist, attribute_fetcher, self.conn['test'],
                           bson.ObjectId('000000000000000000000000'))
 
     def test_existing_user(self):
-        user_id = self.db.registered.insert({
+        user_id = self.conn['test'].registered.insert({
             'email': 'john@example.com',
             'date': datetime.datetime(2013, 4, 1, 10, 10, 20),
             'verified': True,
         })
         self.assertEqual(
-            attribute_fetcher(self.db, user_id),
+            attribute_fetcher(self.conn['test'], user_id),
             {'email': 'john@example.com',
             'date': datetime.datetime(2013, 4, 1, 10, 10, 20, 0),
             'verified': True}
         )
 
     def test_malicious_attributes(self):
-        user_id = self.db.registered.insert({
+        user_id = self.conn['test'].registered.insert({
             'email': 'john@example.com',
             'date': datetime.datetime(2013, 4, 1, 10, 10, 20),
             'verified': True,
@@ -46,7 +38,7 @@ class AttributeFetcherTests(unittest.TestCase):
         })
         # Malicious attributes are not returned
         self.assertEqual(
-            attribute_fetcher(self.db, user_id),
+            attribute_fetcher(self.conn['test'], user_id),
             {'email': 'john@example.com',
             'date': datetime.datetime(2013, 4, 1, 10, 10, 20, 0),
             'verified': True}
