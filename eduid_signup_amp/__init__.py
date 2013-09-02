@@ -9,14 +9,17 @@ def attribute_fetcher(db, user_id):
         raise UserDoesNotExist("No user matching _id='%s'" % user_id)
 
     else:
-        # white list of valid attributes for security reasons
-        for attr in ('email', 'date', 'verified'):
-            value = user.get(attr, None)
-            if value is not None:
-                attributes[attr] = value
+        email = user.get('email', None)
+        if email:
+            attributes['mail'] = email
+            attributes['mailAliases'] = [{
+                'email': email,
+                'verified': user.get('verified', False),
+            }]
 
         # This values must overwrite existent values
-        for attr in ('screen_name', 'last_name', 'first_name', 'passwords'):
+        for attr in ('givenName', 'sn', 'displayName', 'passwords',
+                     'date'):
             value = user.get(attr, None)
             if value is not None:
                 attributes[attr] = value
