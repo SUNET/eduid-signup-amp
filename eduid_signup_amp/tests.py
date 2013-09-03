@@ -13,70 +13,115 @@ TEST_DB_NAME = 'eduid_signup_test'
 class AttributeFetcherTests(MongoTestCase):
 
     def test_invalid_user(self):
-        self.assertRaises(UserDoesNotExist, attribute_fetcher, self.conn['test'],
+        self.assertRaises(UserDoesNotExist, attribute_fetcher,
+                          self.conn['test'],
                           bson.ObjectId('000000000000000000000000'))
 
     def test_existing_user(self):
         user_id = self.conn['test'].registered.insert({
-            'email': 'john@example.com',
+            'mail': 'john@example.com',
+            'mailAliases': [{
+                'email': 'john@example.com',
+                'verified': True,
+            }],
             'date': datetime.datetime(2013, 4, 1, 10, 10, 20),
-            'verified': True,
         })
         self.assertEqual(
             attribute_fetcher(self.conn['test'], user_id),
-            {'email': 'john@example.com',
-             'date': datetime.datetime(2013, 4, 1, 10, 10, 20, 0),
-             'verified': True}
+            {
+                'mail': 'john@example.com',
+                'mailAliases': [{
+                    'email': 'john@example.com',
+                    'verified': True,
+                }],
+                'date': datetime.datetime(2013, 4, 1, 10, 10, 20, 0)
+            }
+        )
+
+    def test_user_without_aliases(self):
+        user_id = self.conn['test'].registered.insert({
+            'mail': 'john@example.com',
+            'date': datetime.datetime(2013, 4, 1, 10, 10, 20),
+        })
+        self.assertEqual(
+            attribute_fetcher(self.conn['test'], user_id),
+            {
+                'mail': 'john@example.com',
+                'mailAliases': [{
+                    'email': 'john@example.com',
+                    'verified': False,
+                }],
+                'date': datetime.datetime(2013, 4, 1, 10, 10, 20, 0)
+            }
         )
 
     def test_malicious_attributes(self):
         user_id = self.conn['test'].registered.insert({
-            'email': 'john@example.com',
+            'mail': 'john@example.com',
+            'mailAliases': [{
+                'email': 'john@example.com',
+                'verified': True,
+            }],
             'date': datetime.datetime(2013, 4, 1, 10, 10, 20),
-            'verified': True,
             'malicious': 'hacker',
         })
         # Malicious attributes are not returned
         self.assertEqual(
             attribute_fetcher(self.conn['test'], user_id),
-            {'email': 'john@example.com',
-             'date': datetime.datetime(2013, 4, 1, 10, 10, 20, 0),
-             'verified': True}
+            {
+                'mail': 'john@example.com',
+                'mailAliases': [{
+                    'email': 'john@example.com',
+                    'verified': True,
+                }],
+                'date': datetime.datetime(2013, 4, 1, 10, 10, 20, 0)
+            }
         )
 
     def test_fillup_attributes(self):
         user_id = self.conn['test'].registered.insert({
-            'email': 'john@example.com',
-            'screen_name': 'John',
+            'mail': 'john@example.com',
+            'displayName': 'John',
+            'mailAliases': [{
+                'email': 'john@example.com',
+                'verified': True,
+            }],
             'date': datetime.datetime(2013, 4, 1, 10, 10, 20),
-            'verified': True,
         })
         self.assertEqual(
             attribute_fetcher(self.conn['test'], user_id),
-            {'email': 'john@example.com',
-             'screen_name': 'John',
-             'date': datetime.datetime(2013, 4, 1, 10, 10, 20, 0),
-             'verified': True}
+            {
+                'mail': 'john@example.com',
+                'mailAliases': [{
+                    'email': 'john@example.com',
+                    'verified': True,
+                }],
+                'displayName': 'John',
+                'date': datetime.datetime(2013, 4, 1, 10, 10, 20, 0),
+            }
         )
 
         self.conn['test'].registered.update({
-            'email': 'john@example.com',
+            'mail': 'john@example.com',
         }, {
             '$set': {
-                'screen_name': 'John2',
+                'displayName': 'John2',
             }
         })
 
         self.assertEqual(
-            attribute_fetcher(self.conn['test'], user_id)['screen_name'],
+            attribute_fetcher(self.conn['test'], user_id)['displayName'],
             'John2',
         )
 
     def test_append_attributes(self):
         user_id = self.conn['test'].registered.insert({
-            'email': 'john@example.com',
+            'mail': 'john@example.com',
+            'mailAliases': [{
+                'email': 'john@example.com',
+                'verified': True,
+            }],
             'date': datetime.datetime(2013, 4, 1, 10, 10, 20),
-            'verified': True,
             'passwords': [{
                 'id': '123',
                 'salt': '456',
@@ -84,30 +129,40 @@ class AttributeFetcherTests(MongoTestCase):
         })
         self.assertEqual(
             attribute_fetcher(self.conn['test'], user_id),
-            {'email': 'john@example.com',
-             'date': datetime.datetime(2013, 4, 1, 10, 10, 20, 0),
-             'verified': True,
-             'passwords': [{
-                 'id': u'123',
-                 'salt': u'456',
-             }]}
+            {
+                'mail': 'john@example.com',
+                'mailAliases': [{
+                    'email': 'john@example.com',
+                    'verified': True,
+                }],
+                'date': datetime.datetime(2013, 4, 1, 10, 10, 20, 0),
+                'passwords': [{
+                    'id': u'123',
+                    'salt': u'456',
+                }]
+            }
         )
 
         # Don't repeat the password
         self.assertEqual(
             attribute_fetcher(self.conn['test'], user_id),
-            {'email': 'john@example.com',
-             'date': datetime.datetime(2013, 4, 1, 10, 10, 20, 0),
-             'verified': True,
-             'passwords': [{
-                 'id': u'123',
-                 'salt': u'456',
-             }]}
+            {
+                'mail': 'john@example.com',
+                'mailAliases': [{
+                    'email': 'john@example.com',
+                    'verified': True,
+                }],
+                'date': datetime.datetime(2013, 4, 1, 10, 10, 20, 0),
+                'passwords': [{
+                    'id': u'123',
+                    'salt': u'456',
+                }]
+            }
         )
 
         # Adding a new password
         self.conn['test'].registered.update({
-            'email': 'john@example.com',
+            'mail': 'john@example.com',
         }, {
             '$push': {
                 'passwords': {
@@ -119,14 +174,19 @@ class AttributeFetcherTests(MongoTestCase):
 
         self.assertEqual(
             attribute_fetcher(self.conn['test'], user_id),
-            {'email': 'john@example.com',
-             'date': datetime.datetime(2013, 4, 1, 10, 10, 20, 0),
-             'verified': True,
-             'passwords': [{
-                 'id': u'123',
-                 'salt': u'456',
-             }, {
-                 'id': u'123a',
-                 'salt': u'456',
-             }]}
+            {
+                'mail': 'john@example.com',
+                'mailAliases': [{
+                    'email': 'john@example.com',
+                    'verified': True,
+                }],
+                'date': datetime.datetime(2013, 4, 1, 10, 10, 20, 0),
+                'passwords': [{
+                    'id': u'123',
+                    'salt': u'456',
+                }, {
+                    'id': u'123a',
+                    'salt': u'456',
+                }]
+            }
         )
