@@ -9,17 +9,13 @@ def attribute_fetcher(db, user_id):
         raise UserDoesNotExist("No user matching _id='%s'" % user_id)
 
     else:
-        mail = user.get('mail', None)
-        if mail is not None:
-            attributes['mail'] = mail
+        email = user.get('email', None)
+        if email is not None:
+            attributes['mail'] = email
 
-        mailAliases = user.get('mailAliases', None)
-        if mailAliases is not None:
-            attributes['mailAliases'] = mailAliases
-        else:
             attributes['mailAliases'] = [{
-                'email': mail,
-                'verified': False,
+                'email': email,
+                'verified': user.get('verified', False),
             }]
 
         # This values must overwrite existent values
