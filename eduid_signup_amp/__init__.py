@@ -18,10 +18,16 @@ def attribute_fetcher(db, user_id):
         }]
 
     # This values must overwrite existent values
+    signup_finished = False
     for attr in ('givenName', 'sn', 'displayName', 'passwords',
                  'date', 'eduPersonPrincipalName'):
         value = user.get(attr, None)
         if value is not None:
             attributes[attr] = value
+            if attr == 'passwords':
+                signup_finished = True
+
+    if signup_finished:
+        db.registered.remove(spec_or_id=user_id)
 
     return attributes
