@@ -92,7 +92,7 @@ class AttributeFetcherTests(MongoTestCase):
             }
         )
 
-    def test_append_attributes(self):
+    def test_user_finished_and_removed(self):
         user_id = self.conn['test'].registered.insert({
             'email': 'john@example.com',
             'verified': True,
@@ -117,51 +117,4 @@ class AttributeFetcherTests(MongoTestCase):
                 }]
             }
         )
-
-        # Don't repeat the password
-        self.assertEqual(
-            attribute_fetcher(self.conn['test'], user_id),
-            {
-                'mail': 'john@example.com',
-                'mailAliases': [{
-                    'email': 'john@example.com',
-                    'verified': True,
-                }],
-                'date': datetime.datetime(2013, 4, 1, 10, 10, 20, 0),
-                'passwords': [{
-                    'id': u'123',
-                    'salt': u'456',
-                }]
-            }
-        )
-
-        # Adding a new password
-        self.conn['test'].registered.update({
-            'email': 'john@example.com',
-        }, {
-            '$push': {
-                'passwords': {
-                    'id': '123a',
-                    'salt': '456',
-                }
-            }
-        })
-
-        self.assertEqual(
-            attribute_fetcher(self.conn['test'], user_id),
-            {
-                'mail': 'john@example.com',
-                'mailAliases': [{
-                    'email': 'john@example.com',
-                    'verified': True,
-                }],
-                'date': datetime.datetime(2013, 4, 1, 10, 10, 20, 0),
-                'passwords': [{
-                    'id': u'123',
-                    'salt': u'456',
-                }, {
-                    'id': u'123a',
-                    'salt': u'456',
-                }]
-            }
-        )
+        self.assertRaises(UserDoesNotExist, attribute_fetcher, self.conn['test'], user_id)
