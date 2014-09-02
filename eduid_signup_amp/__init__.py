@@ -1,3 +1,4 @@
+import pymongo.errors
 from eduid_am.exceptions import UserDoesNotExist
 
 
