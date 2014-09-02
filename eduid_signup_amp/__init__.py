@@ -28,6 +28,12 @@ def attribute_fetcher(db, user_id):
                 signup_finished = True
 
     if signup_finished:
-        db.registered.remove(spec_or_id=user_id)
+        try:
+            db.registered.remove(spec_or_id=user_id)
+        except pymongo.errors.OperationFailure:
+            # eduid_am might not have write permission to the signup application's
+            # collection. Just ignore cleanup if that is the case, and let that be
+            # handled by some other process (cron job maybe).
+            pass
 
     return attributes
