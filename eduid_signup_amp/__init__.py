@@ -21,7 +21,7 @@ def attribute_fetcher(db, user_id):
     # This values must overwrite existent values
     signup_finished = False
     for attr in ('givenName', 'sn', 'displayName', 'passwords',
-                 'date', 'eduPersonPrincipalName'):
+                 'date', 'eduPersonPrincipalName', 'subject'):
         value = user.get(attr, None)
         if value is not None:
             attributes[attr] = value
