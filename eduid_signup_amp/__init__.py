@@ -1,5 +1,5 @@
 import pymongo.errors
-from eduid_am.exceptions import UserDoesNotExist
+from eduid_userdb.exceptions import UserDoesNotExist
 
 
 import logging
