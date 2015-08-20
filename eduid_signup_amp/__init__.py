@@ -12,7 +12,7 @@ def attribute_fetcher(db, user_id):
     dict to let the Attribute Manager update the use in the central
     eduid user database.
 
-    :param db: User database (application specific)
+    :param db: Signup application private user database
     :param user_id: Unique identifier
     :type db: SignupUserDB
     :type user_id: ObjectId
