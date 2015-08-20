@@ -2,108 +2,108 @@ import datetime
 
 import bson
 
-from eduid_am.exceptions import UserDoesNotExist
-from eduid_am.tests import MongoTestCase
-from eduid_signup_amp import attribute_fetcher
-
+import eduid_userdb.testing
+from eduid_am.celery import celery, get_attribute_manager
+from eduid_userdb.exceptions import UserDoesNotExist
+from eduid_userdb.testing import MongoTestCase, MOCKED_USER_STANDARD as M
+from eduid_signup_amp import attribute_fetcher, _attribute_transform
 
 TEST_DB_NAME = 'eduid_signup_test'
 
 
 class AttributeFetcherTests(MongoTestCase):
 
+    def setUp(self):
+        print(eduid_userdb.testing)
+        super(AttributeFetcherTests, self).setUp(celery, get_attribute_manager)
+        #self.skipTest("Skip these until we've decided where SignupUserDb should live")
+
     def test_invalid_user(self):
-        self.assertRaises(UserDoesNotExist, attribute_fetcher,
-                          self.conn['test'],
-                          bson.ObjectId('000000000000000000000000'))
+        with self.assertRaises(UserDoesNotExist):
+            attribute_fetcher(self.amdb, bson.ObjectId('000000000000000000000000'))
+
+    def test_existing_user_from_db(self):
+        self.maxDiff = None
+        expected = {'passwords': [{'salt': u'$NDNv1H1$9c810d852430b62a9a7c6159d5d64c4' \
+                                   '1c3831846f81b6799b54e1e8922f11545$32$32$',
+                                   'id': bson.ObjectId('112345678901234567890123')}],
+                    'displayName': u'John Smith',
+                    'mail': 'johnsmith@example.com',
+                    'mailAliases': [{'verified': True, 'email': 'johnsmith@example.com'},
+                                    {'verified': True, 'email': 'johnsmith2@example.com'},
+                                    {'verified': False, 'email': 'johnsmith3@example.com'}],
+                    'sn': u'Smith',
+                    'eduPersonPrincipalName': u'hubba-bubba',
+                    'givenName': u'John',
+                    }
+
+        res = attribute_fetcher(self.amdb, bson.ObjectId(M['_id']))
+        self.assertEqual(res, expected)
 
     def test_existing_user(self):
-        user_id = self.conn['test'].registered.insert({
-            'email': 'john@example.com',
-            'verified': True,
+        user_doc = {
+            'mail': 'johnsmith@example.com',
+            'mailAliases': [{'verified': True, 'email': 'johnsmith@example.com'}],
             'date': datetime.datetime(2013, 4, 1, 10, 10, 20),
-        })
+        }
+        res, signup_finished, = _attribute_transform(user_doc, 'unit testing')
         self.assertEqual(
-            attribute_fetcher(self.conn['test'], user_id),
+            res,
             {
-                'mail': 'john@example.com',
+                'mail': 'johnsmith@example.com',
                 'mailAliases': [{
-                    'email': 'john@example.com',
+                    'email': 'johnsmith@example.com',
                     'verified': True,
                 }],
                 'date': datetime.datetime(2013, 4, 1, 10, 10, 20, 0)
             }
         )
+        self.assertFalse(signup_finished)
 
     def test_user_without_aliases(self):
-        user_id = self.conn['test'].registered.insert({
-            'email': 'john@example.com',
+        user_doc = {
+            'mail': 'john@example.com',
             'date': datetime.datetime(2013, 4, 1, 10, 10, 20),
-        })
+        }
+        res, signup_finished, = _attribute_transform(user_doc, 'unit testing')
         self.assertEqual(
-            attribute_fetcher(self.conn['test'], user_id),
+            res,
             {
                 'mail': 'john@example.com',
-                'mailAliases': [{
-                    'email': 'john@example.com',
-                    'verified': False,
-                }],
-                'date': datetime.datetime(2013, 4, 1, 10, 10, 20, 0)
-            }
-        )
-
-    def test_malicious_attributes(self):
-        user_id = self.conn['test'].registered.insert({
-            'email': 'john@example.com',
-            'verified': True,
-            'date': datetime.datetime(2013, 4, 1, 10, 10, 20),
-            'malicious': 'hacker',
-        })
-        # Malicious attributes are not returned
-        self.assertEqual(
-            attribute_fetcher(self.conn['test'], user_id),
-            {
-                'mail': 'john@example.com',
-                'mailAliases': [{
-                    'email': 'john@example.com',
-                    'verified': True,
-                }],
-                'date': datetime.datetime(2013, 4, 1, 10, 10, 20, 0)
-            }
-        )
-
-    def test_fillup_attributes(self):
-        user_id = self.conn['test'].registered.insert({
-            'email': 'john@example.com',
-            'displayName': 'John',
-            'verified': True,
-            'date': datetime.datetime(2013, 4, 1, 10, 10, 20),
-        })
-        self.assertEqual(
-            attribute_fetcher(self.conn['test'], user_id),
-            {
-                'mail': 'john@example.com',
-                'mailAliases': [{
-                    'email': 'john@example.com',
-                    'verified': True,
-                }],
-                'displayName': 'John',
                 'date': datetime.datetime(2013, 4, 1, 10, 10, 20, 0),
             }
         )
+        self.assertFalse(signup_finished)
+
+    def test_malicious_attributes(self):
+        user_doc = {
+            'givenName': 'Test',
+            'malicious': 'hacker',
+        }
+        # Malicious attributes are not returned
+        res, signup_finished, = _attribute_transform(user_doc, 'unit testing')
+        self.assertEqual(
+            res,
+            {
+                'givenName': 'Test',
+            }
+        )
+        self.assertFalse(signup_finished)
 
     def test_user_finished_and_removed(self):
-        user_id = self.conn['test'].registered.insert({
-            'email': 'john@example.com',
+        user_doc = {
+            'mail': 'john@example.com',
+            'mailAliases': [{'verified': True, 'email': 'john@example.com'}],
             'verified': True,
             'date': datetime.datetime(2013, 4, 1, 10, 10, 20),
             'passwords': [{
                 'id': '123',
                 'salt': '456',
             }]
-        })
+        }
+        res, signup_finished, = _attribute_transform(user_doc, 'unit testing')
         self.assertEqual(
-            attribute_fetcher(self.conn['test'], user_id),
+            res,
             {
                 'mail': 'john@example.com',
                 'mailAliases': [{
@@ -117,4 +117,4 @@ class AttributeFetcherTests(MongoTestCase):
                 }]
             }
         )
-        self.assertRaises(UserDoesNotExist, attribute_fetcher, self.conn['test'], user_id)
+        self.assertTrue(signup_finished)
