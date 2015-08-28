@@ -1,26 +1,52 @@
 import pymongo.errors
 from eduid_userdb.exceptions import UserDoesNotExist
-
+from eduid_userdb.signup import SignupUserDB
 
 import logging
 logger = logging.getLogger(__name__)
 
 
-def attribute_fetcher(db, user_id):
+class SignupAMPContext(object):
+    """
+    Private data for this AM plugin.
+    """
+
+    def __init__(self, db_uri):
+        self.signup_userdb = SignupUserDB(db_uri)
+
+
+def plugin_init(am_conf):
+    """
+    Create a private context for this plugin.
+
+    Whatever is returned by this function will get passed to attribute_fetcher() as
+    the `context' argument.
+
+    @param db_uri: Database URI from the Attribute Manager.
+    @am_conf: Attribute Manager configuration data.
+
+    @type db_uri: str or unicode
+    @type am_conf: dict
+    """
+    return SignupAMPContext(am_conf['MONGO_URI'])
+
+
+def attribute_fetcher(context, user_id):
     """
     Read a user from the Signup private userdb and return an update
     dict to let the Attribute Manager update the use in the central
     eduid user database.
 
-    :param db: Signup application private user database
+    :param context: Plugin context, see plugin_init above.
     :param user_id: Unique identifier
-    :type db: SignupUserDB
+
+    :type context: SignupAMPContext
     :type user_id: ObjectId
 
     :return: update dict
     :rtype: dict
     """
-    user = db.get_user_by_id(user_id)
+    user = context.signup_userdb.get_user_by_id(user_id)
     if user is None:
         raise UserDoesNotExist("No user matching _id='%s'" % user_id)
 
@@ -30,7 +56,7 @@ def attribute_fetcher(db, user_id):
 
     if signup_finished:
         try:
-            db.remove_user_by_id(user_id)
+            context.signup_userdb.remove_user_by_id(user_id)
         except pymongo.errors.OperationFailure:
             # eduid_am might not have write permission to the signup application's
             # collection. Just ignore cleanup if that is the case, and let that be

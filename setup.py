@@ -46,5 +46,9 @@ setup(
     entry_points="""\
     [eduid_am.attribute_fetcher]
     eduid_signup = eduid_signup_amp:attribute_fetcher
+
+    [eduid_am.plugin_init]
+    eduid_signup = eduid_signup_amp:plugin_init
+
     """,
 )
