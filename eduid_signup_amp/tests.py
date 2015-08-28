@@ -1,29 +1,22 @@
-import datetime
-
 import bson
 
-import eduid_userdb.testing
+from eduid_userdb.signup import SignupUser
 from eduid_am.celery import celery, get_attribute_manager
 from eduid_userdb.exceptions import UserDoesNotExist
 from eduid_userdb.testing import MongoTestCase, MOCKED_USER_STANDARD as M
 from eduid_signup_amp import attribute_fetcher, _attribute_transform, plugin_init
-from eduid_userdb.signup import SignupUser
-
-TEST_DB_NAME = 'eduid_signup_test'
 
 
 class AttributeFetcherTests(MongoTestCase):
 
     def setUp(self):
-        print(eduid_userdb.testing)
         super(AttributeFetcherTests, self).setUp(celery, get_attribute_manager)
+
         self.plugin_context = plugin_init(celery.conf)
 
         for userdoc in self.amdb._get_all_userdocs():
             signup_user = SignupUser(data = userdoc)
             self.plugin_context.signup_userdb.save(signup_user, check_sync=False)
-
-        #self.skipTest("Skip these until we've decided where SignupUserDb should live")
 
     def test_invalid_user(self):
         with self.assertRaises(UserDoesNotExist):
@@ -51,7 +44,6 @@ class AttributeFetcherTests(MongoTestCase):
         user_doc = {
             'mail': 'johnsmith@example.com',
             'mailAliases': [{'verified': True, 'email': 'johnsmith@example.com'}],
-            'date': datetime.datetime(2013, 4, 1, 10, 10, 20),
         }
         res, signup_finished, = _attribute_transform(user_doc, 'unit testing')
         self.assertEqual(
@@ -62,7 +54,6 @@ class AttributeFetcherTests(MongoTestCase):
                     'email': 'johnsmith@example.com',
                     'verified': True,
                 }],
-                'date': datetime.datetime(2013, 4, 1, 10, 10, 20, 0)
             }
         )
         self.assertFalse(signup_finished)
@@ -70,14 +61,12 @@ class AttributeFetcherTests(MongoTestCase):
     def test_user_without_aliases(self):
         user_doc = {
             'mail': 'john@example.com',
-            'date': datetime.datetime(2013, 4, 1, 10, 10, 20),
         }
         res, signup_finished, = _attribute_transform(user_doc, 'unit testing')
         self.assertEqual(
             res,
             {
                 'mail': 'john@example.com',
-                'date': datetime.datetime(2013, 4, 1, 10, 10, 20, 0),
             }
         )
         self.assertFalse(signup_finished)
@@ -102,7 +91,6 @@ class AttributeFetcherTests(MongoTestCase):
             'mail': 'john@example.com',
             'mailAliases': [{'verified': True, 'email': 'john@example.com'}],
             'verified': True,
-            'date': datetime.datetime(2013, 4, 1, 10, 10, 20),
             'passwords': [{
                 'id': '123',
                 'salt': '456',
@@ -117,7 +105,6 @@ class AttributeFetcherTests(MongoTestCase):
                     'email': 'john@example.com',
                     'verified': True,
                 }],
-                'date': datetime.datetime(2013, 4, 1, 10, 10, 20, 0),
                 'passwords': [{
                     'id': u'123',
                     'salt': u'456',
