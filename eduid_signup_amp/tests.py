@@ -6,7 +6,8 @@ import eduid_userdb.testing
 from eduid_am.celery import celery, get_attribute_manager
 from eduid_userdb.exceptions import UserDoesNotExist
 from eduid_userdb.testing import MongoTestCase, MOCKED_USER_STANDARD as M
-from eduid_signup_amp import attribute_fetcher, _attribute_transform
+from eduid_signup_amp import attribute_fetcher, _attribute_transform, plugin_init
+from eduid_userdb.signup import SignupUser
 
 TEST_DB_NAME = 'eduid_signup_test'
 
@@ -16,11 +17,17 @@ class AttributeFetcherTests(MongoTestCase):
     def setUp(self):
         print(eduid_userdb.testing)
         super(AttributeFetcherTests, self).setUp(celery, get_attribute_manager)
+        self.plugin_context = plugin_init(celery.conf)
+
+        for userdoc in self.amdb._get_all_userdocs():
+            signup_user = SignupUser(data = userdoc)
+            self.plugin_context.signup_userdb.save(signup_user, check_sync=False)
+
         #self.skipTest("Skip these until we've decided where SignupUserDb should live")
 
     def test_invalid_user(self):
         with self.assertRaises(UserDoesNotExist):
-            attribute_fetcher(self.amdb, bson.ObjectId('000000000000000000000000'))
+            attribute_fetcher(self.plugin_context, bson.ObjectId('000000000000000000000000'))
 
     def test_existing_user_from_db(self):
         self.maxDiff = None
@@ -37,7 +44,7 @@ class AttributeFetcherTests(MongoTestCase):
                     'givenName': u'John',
                     }
 
-        res = attribute_fetcher(self.amdb, bson.ObjectId(M['_id']))
+        res = attribute_fetcher(self.plugin_context, bson.ObjectId(M['_id']))
         self.assertEqual(res, expected)
 
     def test_existing_user(self):
