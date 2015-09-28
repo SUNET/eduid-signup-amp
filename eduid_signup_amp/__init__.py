@@ -86,7 +86,7 @@ def _attribute_transform(user_dict, user_id):
     # This values must overwrite existent values
     signup_finished = False
     for attr in ('givenName', 'sn', 'displayName', 'passwords',
-                 'date', 'eduPersonPrincipalName', 'subject'):  # XXX `date' is unused
+                 'date', 'eduPersonPrincipalName', 'subject', 'tou'):  # XXX `date' is unused
         value = user_dict.get(attr, None)
         if value is not None:
             attributes[attr] = value
