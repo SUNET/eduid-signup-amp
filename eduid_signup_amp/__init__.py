@@ -22,10 +22,8 @@ def plugin_init(am_conf):
     Whatever is returned by this function will get passed to attribute_fetcher() as
     the `context' argument.
 
-    @param db_uri: Database URI from the Attribute Manager.
     @am_conf: Attribute Manager configuration data.
 
-    @type db_uri: str or unicode
     @type am_conf: dict
     """
     return SignupAMPContext(am_conf['MONGO_URI'])
@@ -86,7 +84,7 @@ def _attribute_transform(user_dict, user_id):
     # This values must overwrite existent values
     signup_finished = False
     for attr in ('givenName', 'sn', 'displayName', 'passwords',
-                 'date', 'eduPersonPrincipalName', 'subject', 'tou'):  # XXX `date' is unused
+                 'eduPersonPrincipalName', 'subject', 'tou'):
         value = user_dict.get(attr, None)
         if value is not None:
             attributes[attr] = value
