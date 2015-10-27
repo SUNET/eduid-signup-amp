@@ -14,7 +14,7 @@ class AttributeFetcherTests(MongoTestCase):
 
         self.plugin_context = plugin_init(celery.conf)
 
-        for userdoc in self.amdb._get_all_userdocs():
+        for userdoc in self.amdb._get_all_docs():
             signup_user = SignupUser(data = userdoc)
             self.plugin_context.signup_userdb.save(signup_user, check_sync=False)
 
@@ -35,6 +35,7 @@ class AttributeFetcherTests(MongoTestCase):
                     'sn': u'Smith',
                     'eduPersonPrincipalName': u'hubba-bubba',
                     'givenName': u'John',
+                    'tou': []
                     }
 
         res = attribute_fetcher(self.plugin_context, bson.ObjectId(M['_id']))
