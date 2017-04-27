@@ -1,6 +1,8 @@
 import pymongo.errors
+from datetime import datetime
 from eduid_userdb.exceptions import UserDoesNotExist
 from eduid_userdb.signup import SignupUserDB
+from eduid_userdb.util import UTC
 
 import logging
 logger = logging.getLogger(__name__)
@@ -11,8 +13,9 @@ class SignupAMPContext(object):
     Private data for this AM plugin.
     """
 
-    def __init__(self, db_uri):
+    def __init__(self, db_uri, new_user_date):
         self.signup_userdb = SignupUserDB(db_uri)
+        self.new_user_date = datetime.strptime(new_user_date, '%Y-%m-%d').replace(tzinfo=UTC())
 
 
 def plugin_init(am_conf):
@@ -26,7 +29,7 @@ def plugin_init(am_conf):
 
     @type am_conf: dict
     """
-    return SignupAMPContext(am_conf['MONGO_URI'])
+    return SignupAMPContext(am_conf['MONGO_URI'], am_conf['NEW_USER_DATE'])
 
 
 def attribute_fetcher(context, user_id):
@@ -48,7 +51,10 @@ def attribute_fetcher(context, user_id):
     if user is None:
         raise UserDoesNotExist("No user matching _id='%s'" % user_id)
 
-    user_dict = user.to_dict(old_userdb_format=True)
+    old_userdb_format = True
+    if datetime.now(tz=UTC()) >= context.new_user_date:
+        old_userdb_format = False
+    user_dict = user.to_dict(old_userdb_format)
 
     attributes, signup_finished, = _attribute_transform(user_dict, user_id)
 
@@ -82,9 +88,18 @@ def _attribute_transform(user_dict, user_id):
         attributes['mailAliases'] = user_dict['mailAliases']
 
     # This values must overwrite existent values
+    WHITELIST_SET_ATTRS = (
+        'givenName',
+        'sn',  # Old format
+        'surname',  # New Format
+        'displayName',
+        'passwords',
+        'eduPersonPrincipalName',
+        'subject',
+        'tou'
+    )
     signup_finished = False
-    for attr in ('givenName', 'sn', 'displayName', 'passwords',
-                 'eduPersonPrincipalName', 'subject', 'tou'):
+    for attr in WHITELIST_SET_ATTRS:
         value = user_dict.get(attr, None)
         if value is not None:
             attributes[attr] = value
