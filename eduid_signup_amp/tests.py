@@ -27,7 +27,7 @@ class AttributeFetcherTests(MongoTestCase):
         self.maxDiff = None
         expected = {'passwords': [{'salt': u'$NDNv1H1$9c810d852430b62a9a7c6159d5d64c4' \
                                    '1c3831846f81b6799b54e1e8922f11545$32$32$',
-                                   'id': bson.ObjectId('112345678901234567890123')}],
+                                   'credential_id': u'112345678901234567890123'}],
                     'displayName': u'John Smith',
                     'mail': 'johnsmith@example.com',
                     'mailAliases': [{'verified': True, 'email': 'johnsmith@example.com'},
@@ -137,7 +137,7 @@ class AttributeFetcherTestsNewUsers(MongoTestCase):
         self.maxDiff = None
         expected = {'passwords': [{'salt': u'$NDNv1H1$9c810d852430b62a9a7c6159d5d64c4'
                                    '1c3831846f81b6799b54e1e8922f11545$32$32$',
-                                   'id': bson.ObjectId('112345678901234567890123')}],
+                                   'credential_id': u'112345678901234567890123'}],
                     'displayName': u'John Smith',
                     'mailAliases': [{'verified': True, 'primary': True, 'email': 'johnsmith@example.com'},
                                     {'verified': True, 'primary': False, 'email': 'johnsmith2@example.com'},
