@@ -2,10 +2,14 @@ language: python
 python:
   - "2.7"
   - "3.6"
+before_install:
+  - docker pull docker.sunet.se/eduid/mongodb:latest
+services:
+  - docker
 # command to install dependencies
 install:
   - pip install -U setuptools
-  - python setup.py develop easy_install eduid_signup_amp[testing]
+  - python setup.py testing
 # command to run tests
 script:
   - pip freeze
