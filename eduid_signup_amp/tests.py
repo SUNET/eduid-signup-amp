@@ -2,7 +2,6 @@ import bson
 from datetime import date, timedelta
 
 from eduid_userdb.signup import SignupUser
-from eduid_am.celery import celery, get_attribute_manager
 from eduid_userdb.exceptions import UserDoesNotExist
 from eduid_userdb.testing import MongoTestCase, MOCKED_USER_STANDARD as M
 from eduid_signup_amp import attribute_fetcher, _attribute_transform, plugin_init
@@ -11,9 +10,9 @@ from eduid_signup_amp import attribute_fetcher, _attribute_transform, plugin_ini
 class AttributeFetcherTests(MongoTestCase):
 
     def setUp(self):
-        super(AttributeFetcherTests, self).setUp(celery, get_attribute_manager)
+        super(AttributeFetcherTests, self).setUp(init_am=True)
 
-        self.plugin_context = plugin_init(celery.conf)
+        self.plugin_context = plugin_init(self.am_settings)
 
         for userdoc in self.amdb._get_all_docs():
             signup_user = SignupUser(data = userdoc)
@@ -121,9 +120,9 @@ class AttributeFetcherTestsNewUsers(MongoTestCase):
     def setUp(self):
         # Set new user date to yesterday
         am_settings = {'NEW_USER_DATE': str(date.today() - timedelta(days=1))}
-        super(AttributeFetcherTestsNewUsers, self).setUp(celery, get_attribute_manager, am_settings=am_settings)
+        super(AttributeFetcherTestsNewUsers, self).setUp(init_am=True, am_settings=am_settings)
 
-        self.plugin_context = plugin_init(celery.conf)
+        self.plugin_context = plugin_init(self.am_settings)
 
         for userdoc in self.amdb._get_all_docs():
             signup_user = SignupUser(data = userdoc)
