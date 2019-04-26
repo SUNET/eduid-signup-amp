@@ -10,7 +10,11 @@ from eduid_signup_amp import attribute_fetcher, _attribute_transform, plugin_ini
 class AttributeFetcherTests(MongoTestCase):
 
     def setUp(self):
-        super(AttributeFetcherTests, self).setUp(init_am=True)
+        am_settings = {
+            'WANT_MONGO_URI': True,
+            'NEW_USER_DATE': '2001-01-01'
+        }
+        super(AttributeFetcherTests, self).setUp(init_am=True, am_settings=am_settings)
 
         self.plugin_context = plugin_init(self.am_settings)
 
@@ -24,19 +28,22 @@ class AttributeFetcherTests(MongoTestCase):
 
     def test_existing_user_from_db(self):
         self.maxDiff = None
-        expected = {'passwords': [{'salt': u'$NDNv1H1$9c810d852430b62a9a7c6159d5d64c4' \
-                                   '1c3831846f81b6799b54e1e8922f11545$32$32$',
-                                   'credential_id': u'112345678901234567890123'}],
-                    'displayName': u'John Smith',
-                    'mail': 'johnsmith@example.com',
-                    'mailAliases': [{'verified': True, 'email': 'johnsmith@example.com'},
-                                    {'verified': True, 'email': 'johnsmith2@example.com'},
-                                    {'verified': False, 'email': 'johnsmith3@example.com'}],
-                    'sn': u'Smith',
-                    'eduPersonPrincipalName': u'hubba-bubba',
-                    'givenName': u'John',
-                    'tou': []
-                    }
+        expected = {
+            'displayName': 'John Smith',
+            'eduPersonPrincipalName': 'hubba-bubba',
+            'givenName': 'John',
+            'mailAliases': [
+                {'email': 'johnsmith@example.com', 'primary': True, 'verified': True},
+                {'email': 'johnsmith2@example.com', 'primary': False, 'verified': True},
+                {'email': 'johnsmith3@example.com', 'primary': False, 'verified': False}
+            ],
+            'passwords': [{
+                'credential_id': '112345678901234567890123',
+                'salt': '$NDNv1H1$9c810d852430b62a9a7c6159d5d64c41c3831846f81b6799b54e1e8922f11545$32$32$'
+            }],
+            'surname': 'Smith',
+            'tou': []
+        }
 
         res = attribute_fetcher(self.plugin_context, bson.ObjectId(M['_id']))
         self.assertEqual(res, expected)
@@ -118,8 +125,10 @@ class AttributeFetcherTests(MongoTestCase):
 class AttributeFetcherTestsNewUsers(MongoTestCase):
 
     def setUp(self):
-        # Set new user date to yesterday
-        am_settings = {'NEW_USER_DATE': str(date.today() - timedelta(days=1))}
+        am_settings = {
+            'WANT_MONGO_URI': True,
+            'NEW_USER_DATE': '2001-01-01'
+        }
         super(AttributeFetcherTestsNewUsers, self).setUp(init_am=True, am_settings=am_settings)
 
         self.plugin_context = plugin_init(self.am_settings)
